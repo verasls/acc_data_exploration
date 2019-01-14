@@ -7,7 +7,7 @@ calculateAccMetricsAvg = function(files.path) {
   # Returns:
   #   A csv file containing accelerometer metrics average for each speed for each file in a directory
   
-  require(tidyverse)
+  require(plyr)
   
   files <- list.files(path = files.path, pattern = "csv")
   dir.create(path = paste(files.path, "/means", sep = ""), showWarnings = FALSE)
