@@ -1,0 +1,56 @@
+---
+title: "Abstract 1: Report"
+author: "Lucas Veras"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 6, fig.height = 4,
+                      echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r analysis_script}
+source("analysis_PAI_steps.R")
+```
+## Overview
+
+Nowadays step counts measurement has been proposed to be implemented in public health care services to assess the achievement of physical activity (PA) recommendation (1). The cut-points utilized to identify moderate PA (MPA) and vigorous PA (VPA) intensity have been developed manly for non-obese people, there being no adequate cut-points for people with class II-III obesity (2). The aim of this study was to develop cut-points to classify MPA and VPA in severe obese people based on step counts data.
+
+## Data analysis
+### Sample descriptives
+`r nrow(samp.desc)` class II-III obese adults (`r length(which(samp.desc$sex == "M"))` males, `r length(which(samp.desc$sex == "F"))` females, age: `r descriptives$age_mean`±`r descriptives$age_sd` yrs; height: `r descriptives$height_mean`±`r descriptives$height_sd` cm; weight: `r descriptives$weight_mean`±`r descriptives$weight_sd` kg; BMI: `r descriptives$BMI_mean`±`r descriptives$BMI_sd` kg.m-2; percent whole-body fat: `r descriptives$fat_mean`±`r descriptives$fat_sd`%; X̄±SD)
+
+### Receiver operating characteristic
+Receiver operating characteristic (ROC) curves were built using the intensity categories obtained by MET values as response and steps/5-sec as predictor. Cut-points were selected based on the closest-to-(1,0) method.
+
+ROC curve for MPA and its respective cut-point:
+```{r ROC_mod}
+ROC.mod
+plot.roc(smooth(ROC.mod))
+cp.ROC.mod
+```
+
+ROC curve for VPA and its respective cut-point:
+```{r ROC_vig}
+ROC.vig
+plot.roc(smooth(ROC.vig))
+cp.ROC.vig
+```
+
+### Validity analysis
+The validity cut-points developed were then analyzed through leave-one-out cross-validation (LOOCV) method. Hence, each participant’s data was separated into a testing dataset (one at a time) with the remaining data being in the training dataset. New ROC, with the same structure as determined for the entire sample, were developed using the training dataset to identify PAI for the only participant in the testing dataset. This process was repeated for all participants (40 times). Data from testing dataset were used in the following validation analyses and can be found [here](https://www.dropbox.com/s/4ijpwveqx7buweu/ROC_LOOCV.csv?dl=0).
+
+Classification agreement through unweighted Kappa statistic for MPA:
+```{r kappa_mod}
+K.mod
+```
+
+Classification agreement through unweighted Kappa statistic for VPA:
+```{r kappa_vig}
+K.vig
+```
+
+The percent agreement was `r mod.agree`% for MPA and `r vig.agree`% for VPA. 
