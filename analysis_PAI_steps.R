@@ -26,7 +26,7 @@ hip.df <- do.call(rbind, (lapply(unique(hip.df$ID), getMET, df = hip.df)))
 hip.df <- getMETcategories(hip.df)
 
 
-# Statistical analysis  ---------------------------------------------------
+# Data analysis  ----------------------------------------------------------
 
 # ** Sample descriptives --------------------------------------------------
 
