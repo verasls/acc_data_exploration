@@ -1,7 +1,8 @@
 getMET <- function(df, ID) {
   # Computes MET values for a single ID based on first step VO2/kg value
   # Args:
-  #   id.num: subject ID
+  #   df: a dataframe containing each ID VO2/kg value 
+  #   ID: subject ID
   #
   # Returns:
   #   A dataframe adding a colunm with computed MET values to the base dataframe
