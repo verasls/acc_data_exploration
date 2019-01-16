@@ -1,0 +1,279 @@
+---
+title: 'Abstract 2: Report'
+author: "Lucas Veras"
+date: "2019-01-16"
+output: 
+  html_document:
+    toc: true
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Overview
+
+Accelerometry has been proving that is a valid method to predict several physical activity parameters as ground reaction force (GRF). Although accurate results can be obtained from different placements such as hip and back, they can be only guaranteed if specific equations developed for those locations are applied. However, the correct placement cannot be ensured in several situations and its consequences on prediction accuracy are unknown. Therefore, the aim of this study was to compare the effect of correct/incorrect placement on prediction accuracy of peak resultant GRF (pRGRF).
+
+```{r prep, echo = FALSE}
+library(knitr)
+library(tidyverse)
+library(plyr)
+library(nlme)
+library(multcomp)
+library(ggplot2)
+source("R/cvLR.R")
+source("R/accuracyIndices.R")
+
+back <- read.csv("data/GRF_ACC_misplacement/Back_sec.csv") %>%
+  as.tibble() %>% 
+  dplyr::select(-name)
+
+hip <- read.csv("data/GRF_ACC_misplacement/Hip_sec.csv") %>%
+  as.tibble() %>% 
+  dplyr::select(-name)
+```
+
+## Data analysis
+
+### Linear regressions
+
+First, multiple linear regression models were built for both back and hip accelerometer placements, using body mass and peak acceleration to predict pRGRF.
+
+```{r linear_regression}
+back.LR <- lm(pRGRF_N ~ weight + pRACC_g, data = back)
+hip.LR  <- lm(pRGRF_N ~ weight + pRACC_g, data = hip)
+
+summary(back.LR)
+summary(hip.LR)
+```
+
+Then, these models were cross-validated using the leave-one-out approach.
+
+```{r LOOCV}
+back.LOOCV <- do.call(rbind, (lapply(unique(back$ID), cvLR, df = back, formula = pRGRF_N ~ weight + pRACC_g)))
+hip.LOOCV  <- do.call(rbind, (lapply(unique(hip$ID), cvLR, df = hip, formula = pRGRF_N ~ weight + pRACC_g)))
+```
+
+Data containing LOOCV predictions for back accelerometer placement can be found [here](https://www.dropbox.com/s/11fo8hr3hvn0qb5/abstract2_back_ACC_by_back_LR_LOOCV.csv?dl=0) and for hip placement [here](https://www.dropbox.com/s/cuvr9qni5on5h0x/abstract2_hip_ACC_by_hip_LR_LOOCV.csv?dl=0).
+
+Hip model were also tested with back peak acceleration data and back model with hip peak acceleration data.
+```{r cross_prediction}
+back.data.by.hip.LR <- cbind(back, predict(hip.LR, newdata = back, level = 0)) %>% 
+  as.tibble()
+hip.data.by.back.LR <- cbind(hip, predict(back.LR, newdata = hip, level = 0)) %>% 
+  as.tibble()
+names(back.data.by.hip.LR)[8] <- "back_ACC_by_hip_LR"
+names(hip.data.by.back.LR)[8] <- "hip_ACC_by_back_LR"
+```
+
+Data containing hip model predictions using back accelerometer data can be found [here](https://www.dropbox.com/s/wlb79l13y02z2ny/abstract2_back_ACC_by_hip_LR_LOOCV.csv?dl=0) and containing back model predictions using hip accelerometer data [here](https://www.dropbox.com/s/n5nn3d0kjdycirq/abstract2_hip_ACC_by_back_LR_LOOCV.csv?dl=0).
+
+After that, indices of accuracy were calculated for all four conditions (back data - back equation; hip data - hip equation; back data - hip equation; hip data - back equation), and can be found below:
+
+```{r accuracy}
+back.accuracy        <- accuracyIndices(back.LOOCV, "pRGRF_N_predicted", "pRGRF_N")
+hip.accuracy         <- accuracyIndices(hip.LOOCV, "pRGRF_N_predicted", "pRGRF_N")
+back.by.hip.accuracy <- accuracyIndices(back.data.by.hip.LR, "back_ACC_by_hip_LR", "pRGRF_N")
+hip.by.back.accuracy <- accuracyIndices(hip.data.by.back.LR, "hip_ACC_by_back_LR", "pRGRF_N")
+
+accuracy <- rbind(back.accuracy, hip.accuracy, back.by.hip.accuracy, hip.by.back.accuracy)
+accuracy$model_name <- c("back by back", "hip by hip", "back by hip", "hip by back")
+accuracy <- accuracy[, c(15, 1:14)]
+
+kable(accuracy)
+```
+
+### Mixed models
+
+Mixed models were used to assess for any differences among pRGRF values either measured by the force plates or predicted by the linear regressions.
+
+To run the mixed models analysis, a new dataframe needed to be built, containing only the variables necessary for the models in the appropriate form. The resulting dataframe had 4 variables:
+
+- **ID**: subject ID number;
+- **speed**: walking speed (km^.^h^-1^);
+- **pRGRF**: pRGRF values (N);
+- **group**: a factor with 5 levels grouping pRGRF values by condition:
+    + **measured**
+    + **back_ACC_by_back_LR**
+    + **hip_ACC_by_hip_LR**
+    + **back_ACC_by_hip_LR**
+    + **hip_ACC_by_back_LR**
+
+Code to tidy the date is shown below.
+
+```{r MM_dataframe}
+# Get predicted pRGRF values
+back.by.back <- back.LOOCV %>% 
+  dplyr::select(ID, speed, pRGRF_N_predicted)
+hip.by.hip <- hip.LOOCV %>% 
+  dplyr::select(ID, speed, pRGRF_N_predicted)
+back.by.hip <- back.data.by.hip.LR %>% 
+  dplyr::select(ID, speed, back_ACC_by_hip_LR)
+hip.by.back <- hip.data.by.back.LR %>% 
+  dplyr::select(ID, speed, hip_ACC_by_back_LR)
+
+names(back.by.back)[3] <- "back_ACC_by_back_LR"
+names(hip.by.hip)[3]   <- "hip_ACC_by_hip_LR"
+
+back.by.back <- back.by.back %>% 
+  spread(key = speed, value = back_ACC_by_back_LR) %>% 
+  na.omit() %>% 
+  gather(
+    `2`, `3`, `4`, `5`, `6`,
+    key = speed,
+    value = back_ACC_by_back_LR
+  )
+
+hip.by.hip <- hip.by.hip %>% 
+  spread(key = speed, value = hip_ACC_by_hip_LR) %>% 
+  na.omit() %>% 
+  gather(
+    `2`, `3`, `4`, `5`, `6`,
+    key = speed,
+    value = hip_ACC_by_hip_LR
+  )
+
+back.by.hip <- back.by.hip %>% 
+  spread(key = speed, value = back_ACC_by_hip_LR) %>% 
+  na.omit() %>% 
+  gather(
+    `2`, `3`, `4`, `5`, `6`,
+    key = speed,
+    value = back_ACC_by_hip_LR
+  )
+
+hip.by.back <- hip.by.back %>%
+  spread(key = speed, value = hip_ACC_by_back_LR) %>%
+  na.omit() %>%
+  gather(
+    `2`, `3`, `4`, `5`, `6`,
+    key = speed,
+    value = hip_ACC_by_back_LR
+  )
+
+# Get measured pRGRF value as average of back and hip
+back.measured.pRGRF <- back %>% 
+  dplyr::select(c(ID, speed, pRGRF_N)) %>% 
+  spread(key = speed, value = pRGRF_N) %>% 
+  na.omit() %>% 
+  gather(
+    `2`, `3`, `4`, `5`, `6`,
+    key = speed,
+    value = back_measured_pRGRF
+  )
+
+hip.measured.pRGRF <- hip %>% 
+  dplyr::select(c(ID, speed, pRGRF_N)) %>% 
+  spread(key = speed, value = pRGRF_N) %>% 
+  na.omit() %>% 
+  gather(
+    `2`, `3`, `4`, `5`, `6`,
+    key = speed,
+    value = hip_measured_pRGRF
+  )
+
+measured.pRGRF <- back.measured.pRGRF %>% 
+  left_join(hip.measured.pRGRF, by = c("ID", "speed"))
+
+measured.pRGRF$measured <- NA
+for (i in 1:nrow(measured.pRGRF)) {
+  measured.pRGRF$measured[i] <- mean(
+    c(
+      measured.pRGRF$back_measured_pRGRF[i], 
+      measured.pRGRF$hip_measured_pRGRF[i]
+    )
+  )
+}
+
+measured.pRGRF <- dplyr::select(measured.pRGRF, c(ID, speed, measured))
+
+# Merge all dataframes
+all.pRGRF <- join_all(
+  list(measured.pRGRF, back.by.back, hip.by.hip, back.by.hip, hip.by.back),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    measured, back_ACC_by_back_LR, hip_ACC_by_hip_LR, back_ACC_by_hip_LR, hip_ACC_by_back_LR,
+    key = "group",
+    value = "pRGRF"
+  )
+all.pRGRF$speed <- as.numeric(all.pRGRF$speed)
+all.pRGRF$group <- as.factor(all.pRGRF$group)
+```
+
+A linear mixed model was built with pRGRF as dependent variable, subject ID (within each speed within each group) as random factor and group as fixed factor. A baseline linear mixed model was also built with the same parameters as the former, except for the fixed effect. This baseline model was created to assess whether the group had any effect on pRGRF value.
+
+```{r mixed_models}
+group.model <- lme(
+  fixed = pRGRF ~ group,
+  random = ~ 1 | ID/speed/group,
+  method = "ML",
+  data = all.pRGRF
+)
+
+baseline <- lme(
+  fixed = pRGRF ~ 1,
+  random = ~ 1 | ID/speed/group,
+  method = "ML",
+  data = all.pRGRF
+)
+
+anova(baseline, group.model)
+```
+
+The likelihood ratio shows that **group** significantly inproved the model (*p*<0.001). Therefore we can conclude that pRGRF values were different among groups.
+
+Tukey *post hoc* tests were done to assess for differences between each pair of groups.
+
+```{r posthoc}
+posthoc <- glht(model = group.model, linfct = mcp(group = "Tukey"))
+summary(posthoc)
+```
+
+*Post  hoc* tests showed that pRGRF values predicted with correct accelerometer placement did not differ from each other neither from pRGRF measured by force plates (*p*>0.05). All pRGRF values predicted with incorrect accelerometer placement significantly differed from each other and from measured pRGRF (*p*<0.001).
+
+### Figure and table
+
+Figure 1 shows mean ± 95% confidence interval for pRGRF values in each speed separated by group.
+
+```{r fig1, dev = 'svg', fig.width = 12, fig.height = 8}
+pRGRF_by_group <- ggplot(data = all.pRGRF, aes(x = speed, y = pRGRF, colour = group)) + 
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    axis.line = element_line(size = 0.5, colour = "Black"),
+    axis.ticks = element_line(size = 0.5, colour = "Black"),
+    axis.ticks.length = unit(2, "mm"),
+    plot.title = element_text(face = "bold")
+  ) +
+  scale_y_continuous(breaks = seq(from = 800, to = 1500, by = 100)) +
+  expand_limits(y = c(800, 1500)) +
+  ggtitle("Figure 1")
+
+pRGRF_by_group
+```
+
+The following table shows pRGRF mean value for each group in each speed.
+
+```{r table}
+pRGRF_mean_by_group <- all.pRGRF %>% 
+  group_by(group, speed) %>% 
+  dplyr::summarise(mean = mean(pRGRF)) %>% 
+  spread(key = group, value = mean)
+# Reorder
+pRGRF_mean_by_group <- pRGRF_mean_by_group[, c(1, 6, 2, 5, 3, 4)]
+
+kable(pRGRF_mean_by_group)
+```
+
+## R session info
+```{r sessionInfo, echo = FALSE}
+sessionInfo()
+```
