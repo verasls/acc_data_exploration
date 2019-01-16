@@ -28,6 +28,17 @@ hip.LR  <- lm(pRGRF_N ~ weight + pRACC_g, data = hip)
 back.LOOCV <- do.call(rbind, (lapply(unique(back$ID), cvLR, df = back, formula = pRGRF_N ~ weight + pRACC_g)))
 hip.LOOCV  <- do.call(rbind, (lapply(unique(hip$ID), cvLR, df = hip, formula = pRGRF_N ~ weight + pRACC_g)))
 
+write.csv(
+  back.LOOCV,
+  file = "~/Dropbox/Projects/ECSS_2019/abstract2_back_ACC_by_back_LR_LOOCV.csv",
+  row.names = FALSE
+)
+write.csv(
+  hip.LOOCV,
+  file = "~/Dropbox/Projects/ECSS_2019/abstract2_hip_ACC_by_hip_LR_LOOCV.csv",
+  row.names = FALSE
+)
+
 # ** Predict model based on other placement data --------------------------
 
 back.data.by.hip.LR <- cbind(back, predict(hip.LR, newdata = back, level = 0)) %>% 
@@ -37,12 +48,27 @@ hip.data.by.back.LR <- cbind(hip, predict(back.LR, newdata = hip, level = 0)) %>
 names(back.data.by.hip.LR)[8] <- "back_ACC_by_hip_LR"
 names(hip.data.by.back.LR)[8] <- "hip_ACC_by_back_LR"
 
+write.csv(
+  back.data.by.hip.LR,
+  file = "~/Dropbox/Projects/ECSS_2019/abstract2_back_ACC_by_hip_LR_LOOCV.csv",
+  row.names = FALSE
+)
+write.csv(
+  hip.data.by.back.LR,
+  file = "~/Dropbox/Projects/ECSS_2019/abstract2_hip_ACC_by_back_LR_LOOCV.csv",
+  row.names = FALSE
+)
+
 # ** Indices of accuracy --------------------------------------------------
 
 back.accuracy        <- accuracyIndices(back.LOOCV, "pRGRF_N_predicted", "pRGRF_N")
 hip.accuracy         <- accuracyIndices(hip.LOOCV, "pRGRF_N_predicted", "pRGRF_N")
 back.by.hip.accuracy <- accuracyIndices(back.data.by.hip.LR, "back_ACC_by_hip_LR", "pRGRF_N")
 hip.by.back.accuracy <- accuracyIndices(hip.data.by.back.LR, "hip_ACC_by_back_LR", "pRGRF_N")
+
+accuracy <- rbind(back.accuracy, hip.accuracy, back.by.hip.accuracy, hip.by.back.accuracy)
+accuracy$model_name <- c("back by back", "hip by hip", "back by hip", "hip by back")
+accuracy <- accuracy[, c(15, 1:14)]
 
 # ** Mixed model ----------------------------------------------------------
 
@@ -184,10 +210,11 @@ pRGRF_by_group <- ggplot(data = all.pRGRF, aes(x = speed, y = pRGRF, colour = gr
     axis.line = element_line(size = 0.5, colour = "Black"),
     axis.ticks = element_line(size = 0.5, colour = "Black"),
     axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(hjust = 0.5)
+    plot.title = element_text(face = "bold")
   ) +
   scale_y_continuous(breaks = seq(from = 800, to = 1500, by = 100)) +
-  expand_limits(y = c(800, 1500))
+  expand_limits(y = c(800, 1500)) +
+  ggtitle("Figure 1")
 
 
 # ** pRGRF means by group -------------------------------------------------
