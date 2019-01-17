@@ -1,7 +1,7 @@
 ---
 title: 'Abstract 2: Report'
 author: "Lucas Veras"
-date: "2019-01-16"
+date: "2019-01-17"
 output: 
   html_document:
     toc: true
@@ -208,14 +208,14 @@ A linear mixed model was built with pRGRF as dependent variable, subject ID (wit
 ```{r mixed_models}
 group.model <- lme(
   fixed = pRGRF ~ group,
-  random = ~ 1 | ID/speed/group,
+  random = ~ 1 | speed/ID/group,
   method = "ML",
   data = all.pRGRF
 )
 
 baseline <- lme(
   fixed = pRGRF ~ 1,
-  random = ~ 1 | ID/speed/group,
+  random = ~ 1 | speed/ID/group,
   method = "ML",
   data = all.pRGRF
 )

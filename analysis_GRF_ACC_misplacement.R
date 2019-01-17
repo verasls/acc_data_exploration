@@ -177,7 +177,7 @@ all.pRGRF$group <- as.factor(all.pRGRF$group)
 
 group.model <- lme(
   fixed = pRGRF ~ group,
-  random = ~ 1 | ID/speed/group,
+  random = ~ 1 | speed/ID/group,
   method = "ML",
   data = all.pRGRF
 )
@@ -185,7 +185,7 @@ summary(group.model)
 
 baseline <- lme(
   fixed = pRGRF ~ 1,
-  random = ~ 1 | ID/speed/group,
+  random = ~ 1 | speed/ID/group,
   method = "ML",
   data = all.pRGRF
 )
