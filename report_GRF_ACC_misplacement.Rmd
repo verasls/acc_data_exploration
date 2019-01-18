@@ -99,7 +99,7 @@ To run the mixed models analysis, a new dataframe needed to be built, containing
     + **back_ACC_by_hip_LR**
     + **hip_ACC_by_back_LR**
 
-Code to tidy the date is shown below.
+Code to tidy the data is shown below.
 
 ```{r MM_dataframe}
 # Get predicted pRGRF values
@@ -203,7 +203,7 @@ all.pRGRF$speed <- as.numeric(all.pRGRF$speed)
 all.pRGRF$group <- as.factor(all.pRGRF$group)
 ```
 
-A linear mixed model was built with pRGRF as dependent variable, subject ID (within each speed within each group) as random factor and group as fixed factor. A baseline linear mixed model was also built with the same parameters as the former, except for the fixed effect. This baseline model was created to assess whether the group had any effect on pRGRF value.
+A linear mixed model was built with pRGRF as dependent variable, subject ID (within each speed within each group) as random effect and group as fixed effect A baseline linear mixed model was also built with the same parameters as the former, except for the fixed effect. This baseline model was created to assess whether the group had any effect on pRGRF value.
 
 ```{r mixed_models}
 group.model <- lme(
