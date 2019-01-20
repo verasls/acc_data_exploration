@@ -19,7 +19,7 @@ library(knitr)
 library(tidyverse)
 library(plyr)
 library(nlme)
-library(multcomp)
+library(lsmeans)
 library(ggplot2)
 source("R/cvLR.R")
 source("R/accuracyIndices.R")
@@ -203,24 +203,24 @@ all.pRGRF$speed <- as.numeric(all.pRGRF$speed)
 all.pRGRF$group <- as.factor(all.pRGRF$group)
 ```
 
-A linear mixed model was built with pRGRF as dependent variable, subject ID (within each speed within each group) as random effect and group as fixed effect A baseline linear mixed model was also built with the same parameters as the former, except for the fixed effect. This baseline model was created to assess whether the group had any effect on pRGRF value.
+A linear mixed model was built with pRGRF as dependent variable, subject ID (within each speed within each group) as random effect and group * speed interaction as fixed effect. A baseline linear mixed model was also built with the same parameters as the former, except for the fixed effect. This baseline model was created to assess whether the group had any effect on pRGRF value.
 
 ```{r mixed_models}
-group.model <- lme(
-  fixed = pRGRF ~ group,
-  random = ~ 1 | speed/ID/group,
-  method = "ML",
-  data = all.pRGRF
-)
-
 baseline <- lme(
   fixed = pRGRF ~ 1,
-  random = ~ 1 | speed/ID/group,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = all.pRGRF
 )
 
-anova(baseline, group.model)
+interact.model <- lme(
+  fixed = pRGRF ~ group * speed,
+  random = ~ 1 | ID/speed/group,
+  method = "ML",
+  data = all.pRGRF
+)
+
+anova(baseline, interact.model)
 ```
 
 The likelihood ratio shows that **group** significantly inproved the model (*p*<0.001). Therefore we can conclude that pRGRF values were different among groups.
@@ -228,9 +228,9 @@ The likelihood ratio shows that **group** significantly inproved the model (*p*<
 Tukey *post hoc* tests were done to assess for differences between each pair of groups.
 
 ```{r posthoc}
-posthoc <- glht(model = group.model, linfct = mcp(group = "Tukey"))
-summary(posthoc)
+posthoc <- lsmeans(interact.model, pairwise ~ group * speed, adjust = "tukey")
 ```
+*Post  hoc* tests by speed can be found [here](https://www.dropbox.com/s/oe4z2nn0koi2xdh/abstract2_posthocs.csv?dl=0).
 
 *Post  hoc* tests showed that pRGRF values predicted with correct accelerometer placement did not differ from each other neither from pRGRF measured by force plates (*p*>0.05). All pRGRF values predicted with incorrect accelerometer placement significantly differed from each other and from measured pRGRF (*p*<0.001).
 
