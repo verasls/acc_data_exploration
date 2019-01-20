@@ -1,7 +1,7 @@
 library(tidyverse)
 library(plyr)
 library(nlme)
-library(multcomp)
+library(lsmeans)
 library(ggplot2)
 source("R/cvLR.R")
 source("R/accuracyIndices.R")
@@ -170,35 +170,41 @@ all.pRGRF <- join_all(
     key = "group",
     value = "pRGRF"
   )
-all.pRGRF$speed <- as.numeric(all.pRGRF$speed)
+all.pRGRF$speed <- as.factor(all.pRGRF$speed)
 all.pRGRF$group <- as.factor(all.pRGRF$group)
 
 # **** Mixed model analysis -----------------------------------------------
 
-group.model <- lme(
-  fixed = pRGRF ~ group,
-  random = ~ 1 | speed/ID/group,
-  method = "ML",
-  data = all.pRGRF
-)
-summary(group.model)
-
 baseline <- lme(
   fixed = pRGRF ~ 1,
-  random = ~ 1 | speed/ID/group,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = all.pRGRF
 )
-summary(baseline)
 
-anova(baseline, group.model)
+group.model <- lme(
+  fixed = pRGRF ~ group,
+  random = ~ 1 | ID/speed/group,
+  method = "ML",
+  data = all.pRGRF
+)
 
-posthoc <- glht(model = group.model, linfct = mcp(group = "Tukey"))
-summary(posthoc)
+interact.model <- lme(
+  fixed = pRGRF ~ group * speed,
+  random = ~ 1 | ID/speed/group,
+  method = "ML",
+  data = all.pRGRF
+)
+
+anova(baseline, group.model, interact.model)
+
+posthoc <- lsmeans(interact.model, pairwise ~ group * speed, adjust = "tukey")
 
 # ** Graph ----------------------------------------------------------------
+plot.df <- all.pRGRF
+plot.df$speed <- as.numeric(plot.df$speed)
 
-pRGRF_by_group <- ggplot(data = all.pRGRF, aes(x = speed, y = pRGRF, colour = group)) + 
+pRGRF_by_group <- ggplot(data = plot.df, aes(x = speed, y = pRGRF, colour = group)) + 
   stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
   stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
   stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
