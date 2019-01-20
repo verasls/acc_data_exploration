@@ -1,5 +1,8 @@
+# Load packages and functions ---------------------------------------------
 library(tidyverse)
+library(plyr)
 library(nlme)
+library(lsmeans)
 source("R/cvMixedModel.R")
 source("R/accuracyIndices.R")
 
@@ -12,11 +15,11 @@ sec.acc  <- read_csv("data/EE_actigraph_filtering/Hip_sec_acc_metrics.csv")
 
 pri <- pri.base %>% 
   left_join(pri.acc, by = c("ID", "speed")) %>% 
-  select(-c(Evaluation, Date, Counts))
+  dplyr::select(-c(Evaluation, Date, Counts))
 
 sec <- sec.base %>% 
   left_join(sec.acc, by = c("ID", "speed")) %>% 
-  select(-c(Evaluation, Date))
+  dplyr::select(-c(Evaluation, Date))
 
 
 # Data analysis -----------------------------------------------------------
@@ -76,22 +79,214 @@ MAD.pred <- predict(
   newdata = na.omit(pri),
   level = 0
 )
-pri.MAD.prediction <- cbind(na.omit(pri), MAD.pred)
-pri.MAD.prediction <- as.tibble(pri.MAD.prediction)
-names(pri.MAD.prediction)[16] <- "VO2.kg_predicted"
+MAD.pri.prediction <- cbind(na.omit(pri), MAD.pred)
+MAD.pri.prediction <- as.tibble(MAD.pri.prediction)
+names(MAD.pri.prediction)[16] <- "VO2.kg_predicted"
 
 ENMO.pred <- predict(
   object = model.ENMO,
   newdata = na.omit(pri),
   level = 0
 )
-pri.ENMO.prediction <- cbind(na.omit(pri), ENMO.pred)
-pri.ENMO.prediction <- as.tibble(pri.ENMO.prediction)
-names(pri.ENMO.prediction)[16] <- "VO2.kg_predicted"
+ENMO.pri.prediction <- cbind(na.omit(pri), ENMO.pred)
+ENMO.pri.prediction <- as.tibble(ENMO.pri.prediction)
+names(ENMO.pri.prediction)[16] <- "VO2.kg_predicted"
+
+# ** Select desired speeds ------------------------------------------------
+
+MAD.LOOCV <- MAD.LOOCV %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+ENMO.LOOCV <- ENMO.LOOCV %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+MAD.pri.prediction <- MAD.pri.prediction %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+ENMO.pri.prediction <- ENMO.pri.prediction %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
 
 # ** Indices of accuracy --------------------------------------------------
-
+# Overall
 MAD.LOOCV.accuracy  <- accuracyIndices(MAD.LOOCV, "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy    <- accuracyIndices(MAD.pri.prediction, "VO2.kg_predicted", "VO2.kg")
 ENMO.LOOCV.accuracy <- accuracyIndices(ENMO.LOOCV, "VO2.kg_predicted", "VO2.kg")
-MAD.pri.accuracy    <- accuracyIndices(pri.MAD.prediction, "VO2.kg_predicted", "VO2.kg")
-ENMO.pri.accuracy   <- accuracyIndices(pri.ENMO.prediction, "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy   <- accuracyIndices(ENMO.pri.prediction, "VO2.kg_predicted", "VO2.kg")
+
+accuracy.all <- rbind(MAD.LOOCV.accuracy, MAD.pri.accuracy, ENMO.LOOCV.accuracy, ENMO.pri.accuracy)
+accuracy.all$metric <- c("MAD", "MAD", "ENMO", "ENMO")
+accuracy.all$accelerometer <- c("sec", "pri", "sec", "pri")
+accuracy.all <- accuracy.all[, c(15, 16, 1:14)]
+
+# By speed
+MAD.LOOCV.accuracy.3  <- accuracyIndices(filter(MAD.LOOCV, speed == 3), "VO2.kg_predicted", "VO2.kg")
+MAD.LOOCV.accuracy.4  <- accuracyIndices(filter(MAD.LOOCV, speed == 4), "VO2.kg_predicted", "VO2.kg")
+MAD.LOOCV.accuracy.5  <- accuracyIndices(filter(MAD.LOOCV, speed == 5), "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy.3    <- accuracyIndices(filter(MAD.pri.prediction, speed == 3), "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy.4    <- accuracyIndices(filter(MAD.pri.prediction, speed == 4), "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy.5    <- accuracyIndices(filter(MAD.pri.prediction, speed == 5), "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy.3 <- accuracyIndices(filter(ENMO.LOOCV, speed == 3), "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy.4 <- accuracyIndices(filter(ENMO.LOOCV, speed == 4), "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy.5 <- accuracyIndices(filter(ENMO.LOOCV, speed == 5), "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy.3   <- accuracyIndices(filter(ENMO.pri.prediction, speed == 3), "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy.4   <- accuracyIndices(filter(ENMO.pri.prediction, speed == 4), "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy.5   <- accuracyIndices(filter(ENMO.pri.prediction, speed == 5), "VO2.kg_predicted", "VO2.kg")
+
+accuracy.speeds <- rbind(
+  MAD.LOOCV.accuracy.3, MAD.LOOCV.accuracy.4, MAD.LOOCV.accuracy.5,
+  MAD.pri.accuracy.3, MAD.pri.accuracy.4, MAD.pri.accuracy.5,
+  ENMO.LOOCV.accuracy.3, ENMO.LOOCV.accuracy.4, ENMO.LOOCV.accuracy.5,
+  ENMO.pri.accuracy.3, ENMO.pri.accuracy.4, ENMO.pri.accuracy.5
+)
+accuracy.speeds$metric <- c(rep("MAD", 6), rep("ENMO", 6))
+accuracy.speeds$accelerometer <- rep(c(rep("sec", 3), rep("pri", 3)), 2)
+accuracy.speeds$speed <- rep(c(3, 4, 5), 4)
+accuracy.speeds <- accuracy.speeds[, c(15, 16, 17, 1:14)]
+
+# ** Mixed models ---------------------------------------------------------
+
+# **** Building dataframe -------------------------------------------------
+# Get measured and predicted VO2/kg values
+MAD.pri <- MAD.pri.prediction %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+MAD.sec <- MAD.LOOCV %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+ENMO.pri <- ENMO.pri.prediction %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+ENMO.sec <- ENMO.LOOCV %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+
+names(MAD.pri)[3]  <- "primary"
+names(MAD.sec)[3]  <- "secondary"
+names(ENMO.pri)[3] <- "primary"
+names(ENMO.sec)[3] <- "secondary"
+
+# Merge dataframes
+MAD.VO2.kg <- join_all(
+  list(MAD.pri, MAD.sec),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    primary, secondary,
+    key = "accelerometer",
+    value = "VO2.kg"
+  )
+MAD.VO2.kg$speed <- as.factor(MAD.VO2.kg$speed)
+MAD.VO2.kg$accelerometer <- as.factor(MAD.VO2.kg$accelerometer)
+
+ENMO.VO2.kg <- join_all(
+  list(ENMO.pri, ENMO.sec),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    primary, secondary,
+    key = "accelerometer",
+    value = "VO2.kg"
+  )
+ENMO.VO2.kg$speed <- as.factor(ENMO.VO2.kg$speed)
+ENMO.VO2.kg$accelerometer <- as.factor(ENMO.VO2.kg$accelerometer)
+
+# **** Mixed models analysis ----------------------------------------------
+# MAD
+MAD.baseline <- lme(
+  fixed = VO2.kg ~ 1,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.VO2.kg
+)
+
+MAD.group <- lme(
+  fixed = VO2.kg ~ accelerometer,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.VO2.kg
+)
+
+MAD.interact <- lme(
+  fixed = VO2.kg ~ accelerometer * speed,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.VO2.kg
+)
+
+anova(MAD.baseline, MAD.group, MAD.interact)
+
+MAD.posthoc <- lsmeans(MAD.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+
+# ENMO
+ENMO.baseline <- lme(
+  fixed = VO2.kg ~ 1,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.VO2.kg
+)
+
+ENMO.group <- lme(
+  fixed = VO2.kg ~ accelerometer,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.VO2.kg
+)
+
+ENMO.interact <- lme(
+  fixed = VO2.kg ~ accelerometer * speed,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.VO2.kg
+)
+
+anova(ENMO.baseline, ENMO.group, ENMO.interact)
+
+ENMO.posthoc <- lsmeans(MAD.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+
+# Graphs ------------------------------------------------------------------
+# MAD
+MAD.graph.df <- MAD.VO2.kg
+MAD.graph.df$speed <- as.numeric(MAD.graph.df$speed)
+MAD.graph.df$speed[MAD.graph.df$speed == 3] <- 5
+MAD.graph.df$speed[MAD.graph.df$speed == 2] <- 4
+MAD.graph.df$speed[MAD.graph.df$speed == 1] <- 3
+
+MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = accelerometer)) +
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  scale_x_continuous(breaks = c(3, 4, 5)) +
+  scale_y_continuous(breaks = seq(from = 9, to = 15)) + 
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    axis.line = element_line(size = 0.5, colour = "Black"),
+    axis.ticks = element_line(size = 0.5, colour = "Black"),
+    axis.ticks.length = unit(2, "mm"),
+    plot.title = element_text(face = "bold")
+  ) +
+  ggtitle("Figure 1")
+
+# ENMO
+ENMO.graph.df <- ENMO.VO2.kg
+ENMO.graph.df$speed <- as.numeric(ENMO.graph.df$speed)
+ENMO.graph.df$speed[ENMO.graph.df$speed == 3] <- 5
+ENMO.graph.df$speed[ENMO.graph.df$speed == 2] <- 4
+ENMO.graph.df$speed[ENMO.graph.df$speed == 1] <- 3
+
+ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = accelerometer)) +
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  scale_x_continuous(breaks = c(3, 4, 5)) +
+  scale_y_continuous(breaks = seq(from = 9, to = 15)) + 
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    axis.line = element_line(size = 0.5, colour = "Black"),
+    axis.ticks = element_line(size = 0.5, colour = "Black"),
+    axis.ticks.length = unit(2, "mm"),
+    plot.title = element_text(face = "bold")
+  ) +
+  ggtitle("Figure 2")
