@@ -1,0 +1,366 @@
+---
+title: 'Abstract 3: Report'
+author: "Lucas Veras"
+date: "2019-01-20"
+output: 
+  html_document:
+    toc: true
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r prep, echo = FALSE}
+library(knitr)
+library(tidyverse)
+library(plyr)
+library(nlme)
+library(lsmeans)
+source("R/cvMixedModel.R")
+source("R/accuracyIndices.R")
+
+pri.base <- read_csv("data/EE_actigraph_filtering/Hip_pri_base.csv")
+pri.acc  <- read_csv("data/EE_actigraph_filtering/Hip_pri_acc_metrics.csv")
+sec.base <- read_csv("data/EE_actigraph_filtering/Hip_sec_base.csv")
+sec.acc  <- read_csv("data/EE_actigraph_filtering/Hip_sec_acc_metrics.csv")
+
+pri <- pri.base %>% 
+  left_join(pri.acc, by = c("ID", "speed")) %>% 
+  dplyr::select(-c(Evaluation, Date, Counts))
+
+sec <- sec.base %>% 
+  left_join(sec.acc, by = c("ID", "speed")) %>% 
+  dplyr::select(-c(Evaluation, Date))
+```
+
+## Overview
+
+Recently standard accelerometer metrics based on raw acceleration haves been proposed, such as mean amplitude deviation (MAD) and euclidean norm minus one (ENMO). One of the major advantages from these metrics is the higher comparability between study results regardless of accelerometer type used. However, some researchers suggest that this comparability can be compromised if manufacturer filtering process is applied before metrics computation. Therefore, the aim of this study was to compare metrics output and prediction accuracy of energy expenditure (EE) between accelerometers with filtered and unfiltered data.
+
+## Data analysis
+
+### Sample descriptives
+```{r sample_descriptives, echo = FALSE}
+samp.desc <- read_csv("data/EE_actigraph_filtering/sample_descriptives_data.csv")
+descriptives <- summarise(
+  .data = samp.desc,
+  age_mean    = round(mean(age), digits = 2),
+  age_sd      = round(sd(age), digits = 2),
+  weight_mean = round(mean(weight_kg), digits = 2),
+  weight_sd   = round(sd(weight_kg), digits = 2),
+  height_mean = round(mean(height_cm), digits = 2),
+  height_sd   = round(sd(height_cm), digits = 2),
+  BMI_mean    = round(mean(BMI_kgm2), digits = 2),
+  BMI_sd      = round(sd(BMI_kgm2), digits = 2),
+  fat_mean    = round(mean(body_fat), digits = 2),
+  fat_sd      = round(sd(body_fat), digits = 2)
+)
+sex <- table(samp.desc$sex)
+```
+
+`r nrow(samp.desc)` class II-II obese adults (`r sex[[2]]` males, `r sex[[1]]` females; age: `r descriptives$age_mean`±`r descriptives$age_sd`yrs; weight: `r descriptives$weight_mean`±`r descriptives$weight_sd`kg; height: `r descriptives$height_mean`±`r descriptives$height_sd`cm; body fat: `r descriptives$fat_mean`±`r descriptives$fat_sd`%; BMI: `r descriptives$BMI_mean`±`r descriptives$BMI_sd`kg^.^m^-1^)
+
+### Mixed models
+
+Two linear mixed models were build to predict VO~2~/kg from non-filtered accelerometer metrics (MAD and ENMO). Final models had linear and quadratic terms of accelerometer metrics and age as fixed effect and subjects as random effect. Models formulas and summaries can be seen below.
+
+```{r mixed_models}
+model.MAD <- lme(
+  fixed = VO2.kg ~ MAD + I(MAD^2) + Age,
+  random = ~ 1 | ID,
+  method = "ML",
+  correlation = corAR1(),
+  data = sec,
+  na.action = na.omit
+)
+
+model.ENMO <- lme(
+  fixed = VO2.kg ~ ENMO + I(ENMO^2) + Age,
+  random = ~ 1 | ID,
+  method = "ML",
+  correlation = corAR1(),
+  data = sec,
+  na.action = na.omit
+)
+
+summary(model.MAD)
+summary(model.ENMO)
+```
+
+After that, both models were cross-validated using the leave-one-out approach. Leave-one-out cross validation data were used to calculate indices of accuracy for the non-filtered accelerometer metrics.
+
+```{r LOOCV}
+fix.eff   <- VO2.kg ~ MAD + I(MAD^2) + Age
+rand.eff  <- ~ 1 | ID
+MAD.LOOCV <- do.call(rbind, (lapply(unique(sec$ID), cvMixedModel, df = sec)))
+
+fix.eff    <- VO2.kg ~ ENMO + I(ENMO^2) + Age
+rand.eff   <- ~ 1 | ID
+ENMO.LOOCV <- do.call(rbind, (lapply(unique(sec$ID), cvMixedModel, df = sec)))
+```
+
+Filtered accelerometer metrics were also tested utilizing the same coefficients defined for non-filtered accelerometer metrics models.
+
+```{r filtered_prediction}
+MAD.pred <- predict(
+  object = model.MAD,
+  newdata = na.omit(pri),
+  level = 0
+)
+MAD.pri.prediction <- cbind(na.omit(pri), MAD.pred)
+MAD.pri.prediction <- as.tibble(MAD.pri.prediction)
+names(MAD.pri.prediction)[16] <- "VO2.kg_predicted"
+
+ENMO.pred <- predict(
+  object = model.ENMO,
+  newdata = na.omit(pri),
+  level = 0
+)
+ENMO.pri.prediction <- cbind(na.omit(pri), ENMO.pred)
+ENMO.pri.prediction <- as.tibble(ENMO.pri.prediction)
+names(ENMO.pri.prediction)[16] <- "VO2.kg_predicted"
+```
+
+All further analysis were done using only data from 3, 4 and 5 km^.^h^-1^ walking speeds.
+
+```{r select_speed}
+MAD.LOOCV <- MAD.LOOCV %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+ENMO.LOOCV <- ENMO.LOOCV %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+MAD.pri.prediction <- MAD.pri.prediction %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+ENMO.pri.prediction <- ENMO.pri.prediction %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+```
+
+### Indices of accuracy
+
+Indices of accuracy were calculated comparing VO~2~/kg measured by indirect calorimetry with predicted by the equations. Overall values of theses indices are shown below.
+```{r overall_IA}
+MAD.LOOCV.accuracy  <- accuracyIndices(MAD.LOOCV, "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy    <- accuracyIndices(MAD.pri.prediction, "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy <- accuracyIndices(ENMO.LOOCV, "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy   <- accuracyIndices(ENMO.pri.prediction, "VO2.kg_predicted", "VO2.kg")
+
+accuracy.all <- rbind(MAD.LOOCV.accuracy, MAD.pri.accuracy, ENMO.LOOCV.accuracy, ENMO.pri.accuracy)
+accuracy.all$metric <- c("MAD", "MAD", "ENMO", "ENMO")
+accuracy.all$accelerometer <- c("sec", "pri", "sec", "pri")
+accuracy.all <- accuracy.all[, c(15, 16, 1:14)]
+
+kable(accuracy.all)
+```
+
+Indices of accuracy by speed can be seen in table below.
+
+```{r by_speed_IA}
+MAD.LOOCV.accuracy.3  <- accuracyIndices(filter(MAD.LOOCV, speed == 3), "VO2.kg_predicted", "VO2.kg")
+MAD.LOOCV.accuracy.4  <- accuracyIndices(filter(MAD.LOOCV, speed == 4), "VO2.kg_predicted", "VO2.kg")
+MAD.LOOCV.accuracy.5  <- accuracyIndices(filter(MAD.LOOCV, speed == 5), "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy.3    <- accuracyIndices(filter(MAD.pri.prediction, speed == 3), "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy.4    <- accuracyIndices(filter(MAD.pri.prediction, speed == 4), "VO2.kg_predicted", "VO2.kg")
+MAD.pri.accuracy.5    <- accuracyIndices(filter(MAD.pri.prediction, speed == 5), "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy.3 <- accuracyIndices(filter(ENMO.LOOCV, speed == 3), "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy.4 <- accuracyIndices(filter(ENMO.LOOCV, speed == 4), "VO2.kg_predicted", "VO2.kg")
+ENMO.LOOCV.accuracy.5 <- accuracyIndices(filter(ENMO.LOOCV, speed == 5), "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy.3   <- accuracyIndices(filter(ENMO.pri.prediction, speed == 3), "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy.4   <- accuracyIndices(filter(ENMO.pri.prediction, speed == 4), "VO2.kg_predicted", "VO2.kg")
+ENMO.pri.accuracy.5   <- accuracyIndices(filter(ENMO.pri.prediction, speed == 5), "VO2.kg_predicted", "VO2.kg")
+
+accuracy.speeds <- rbind(
+  MAD.LOOCV.accuracy.3, MAD.LOOCV.accuracy.4, MAD.LOOCV.accuracy.5,
+  MAD.pri.accuracy.3, MAD.pri.accuracy.4, MAD.pri.accuracy.5,
+  ENMO.LOOCV.accuracy.3, ENMO.LOOCV.accuracy.4, ENMO.LOOCV.accuracy.5,
+  ENMO.pri.accuracy.3, ENMO.pri.accuracy.4, ENMO.pri.accuracy.5
+)
+accuracy.speeds$metric <- c(rep("MAD", 6), rep("ENMO", 6))
+accuracy.speeds$accelerometer <- rep(c(rep("sec", 3), rep("pri", 3)), 2)
+accuracy.speeds$speed <- rep(c(3, 4, 5), 4)
+accuracy.speeds <- accuracy.speeds[, c(15, 16, 17, 1:14)]
+
+kable(accuracy.speeds)
+```
+
+### Primary and secondary accelerometers comparison
+
+Linear mixed models were also used to assess for any differences between VO~2~/kg values predicted either accelerometers.
+
+To run the mixed models analysis, new dataframes needed to be built, containing only the variables necessary for the models in the appropriate form. The resulting dataframes had 4 variables:
+
+- **ID**: subject ID number;
+- **speed**: walking speed (km^.^h^-1^);
+- **pRGRF**: pRGRF values (N);
+- **accelerometer**: a factor with 2 levels grouping VO~2~/kg values by accelerometer data used to predict:
+    - **primary**
+    - **secondary**
+
+Code to tidy the data is shown below.
+
+```{r MM_dataframes}
+# Get measured and predicted VO2/kg values
+MAD.pri <- MAD.pri.prediction %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+MAD.sec <- MAD.LOOCV %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+ENMO.pri <- ENMO.pri.prediction %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+ENMO.sec <- ENMO.LOOCV %>% 
+  dplyr::select(ID, speed, VO2.kg_predicted)
+
+names(MAD.pri)[3]  <- "primary"
+names(MAD.sec)[3]  <- "secondary"
+names(ENMO.pri)[3] <- "primary"
+names(ENMO.sec)[3] <- "secondary"
+
+# Merge dataframes
+MAD.VO2.kg <- join_all(
+  list(MAD.pri, MAD.sec),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    primary, secondary,
+    key = "accelerometer",
+    value = "VO2.kg"
+  )
+MAD.VO2.kg$speed <- as.factor(MAD.VO2.kg$speed)
+MAD.VO2.kg$accelerometer <- as.factor(MAD.VO2.kg$accelerometer)
+
+ENMO.VO2.kg <- join_all(
+  list(ENMO.pri, ENMO.sec),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    primary, secondary,
+    key = "accelerometer",
+    value = "VO2.kg"
+  )
+ENMO.VO2.kg$speed <- as.factor(ENMO.VO2.kg$speed)
+ENMO.VO2.kg$accelerometer <- as.factor(ENMO.VO2.kg$accelerometer)
+```
+
+Database for MAD metric can be found [here](https://www.dropbox.com/s/jp2re3ah98fe4cs/abstract3_VO2_by_MAD.csv?dl=0) and for ENMO metric [here](https://www.dropbox.com/s/vp26p5ae5hl7kn3/abstract3_VO2_by_ENMO.csv?dl=0).
+
+A linear mixed model was built with VO~2~/kg as dependent variable, subject ID (within each speed within each accelerometer) as random effect and accelerometer * speed interaction as fixed effect A baseline linear mixed model was also built with the same parameters as the former, except for the fixed effect. This baseline model was created to assess whether the group had any effect on VO~2~/kg value.
+
+```{r MM}
+# MAD
+MAD.baseline <- lme(
+  fixed = VO2.kg ~ 1,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.VO2.kg
+)
+
+MAD.interact <- lme(
+  fixed = VO2.kg ~ accelerometer * speed,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.VO2.kg
+)
+
+anova(MAD.baseline, MAD.interact)
+
+# ENMO
+ENMO.baseline <- lme(
+  fixed = VO2.kg ~ 1,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.VO2.kg
+)
+
+ENMO.interact <- lme(
+  fixed = VO2.kg ~ accelerometer * speed,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.VO2.kg
+)
+
+anova(ENMO.baseline, ENMO.interact)
+```
+
+The likelihood ratio shows that **accelerometer** significantly inproved the model (*p*<0.001). Therefore we can conclude that VO~2~/kg values were different depending on which accelerometer data was used to predict it.
+
+Tukey *post hoc* tests were done to assess for differences between each pair of accelerometer * speed interaction.
+
+```{r posthoc}
+# MAD
+MAD.posthoc <- lsmeans(MAD.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+MAD.posthoc
+
+# ENMO
+ENMO.posthoc <- lsmeans(MAD.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+ENMO.posthoc
+```
+
+*Post  hoc* tests showed that, in each speed, VO~2~/kg values predicted with primary and secondary accelerometers are significantly different, for either MAD or ENMO metric.
+
+### Graphs
+
+Figure 1 shows mean ± 95% confidence interval for VO~2~/kg values in each speed predicted by each accelerometer using MAD metric.
+```{r MAD_graph, dev = 'svg', fig.width = 12, fig.height = 8}
+# MAD
+MAD.graph.df <- MAD.VO2.kg
+MAD.graph.df$speed <- as.numeric(MAD.graph.df$speed)
+MAD.graph.df$speed[MAD.graph.df$speed == 3] <- 5
+MAD.graph.df$speed[MAD.graph.df$speed == 2] <- 4
+MAD.graph.df$speed[MAD.graph.df$speed == 1] <- 3
+
+MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = accelerometer)) +
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  scale_x_continuous(breaks = c(3, 4, 5)) +
+  scale_y_continuous(breaks = seq(from = 9, to = 15)) + 
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    axis.line = element_line(size = 0.5, colour = "Black"),
+    axis.ticks = element_line(size = 0.5, colour = "Black"),
+    axis.ticks.length = unit(2, "mm"),
+    plot.title = element_text(face = "bold")
+  ) +
+  ggtitle("Figure 1")
+MAD.graph
+```
+
+Figure 2 shows mean ± 95% confidence interval for VO~2~/kg values in each speed predicted by each accelerometer using ENMO metric.
+
+```{r ENMO_graph, dev = 'svg', fig.width = 12, fig.height = 8}
+# ENMO
+ENMO.graph.df <- ENMO.VO2.kg
+ENMO.graph.df$speed <- as.numeric(ENMO.graph.df$speed)
+ENMO.graph.df$speed[ENMO.graph.df$speed == 3] <- 5
+ENMO.graph.df$speed[ENMO.graph.df$speed == 2] <- 4
+ENMO.graph.df$speed[ENMO.graph.df$speed == 1] <- 3
+
+ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = accelerometer)) +
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  scale_x_continuous(breaks = c(3, 4, 5)) +
+  scale_y_continuous(breaks = seq(from = 9, to = 15)) + 
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    axis.line = element_line(size = 0.5, colour = "Black"),
+    axis.ticks = element_line(size = 0.5, colour = "Black"),
+    axis.ticks.length = unit(2, "mm"),
+    plot.title = element_text(face = "bold")
+  ) +
+  ggtitle("Figure 2")
+ENMO.graph
+```
+
+## R session info
+
+```{r sessionInfo, echo = FALSE}
+sessionInfo()
+```
