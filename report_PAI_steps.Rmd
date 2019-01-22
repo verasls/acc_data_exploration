@@ -41,7 +41,7 @@ cp.ROC.vig
 ```
 
 ### Validity analysis
-The validity cut-points developed were then analyzed through leave-one-out cross-validation (LOOCV) method. Hence, each participant’s data was separated into a testing dataset (one at a time) with the remaining data being in the training dataset. New ROC, with the same structure as determined for the entire sample, were developed using the training dataset to identify PAI for the only participant in the testing dataset. This process was repeated for all participants (40 times). Data from testing dataset were used in the following validation analyses and can be found [here](https://www.dropbox.com/s/4ijpwveqx7buweu/ROC_LOOCV.csv?dl=0).
+The validity of the cut-points developed were then analyzed through leave-one-out cross-validation (LOOCV) method. Hence, each participant’s data was separated into a testing dataset (one at a time) with the remaining data being in the training dataset. New ROC, with the same structure as determined for the entire sample, were developed using the training dataset to identify PAI for the only participant in the testing dataset. This process was repeated for all participants (40 times). Data from testing dataset were used in the following validation analyses and can be found [here](https://www.dropbox.com/s/4ijpwveqx7buweu/ROC_LOOCV.csv?dl=0).
 
 Classification agreement through unweighted Kappa statistic for MPA:
 ```{r kappa_mod}
@@ -54,3 +54,9 @@ K.vig
 ```
 
 The percent agreement was `r mod.agree`% for MPA and `r vig.agree`% for VPA. 
+
+## R session info
+
+```{r sessionInfo, echo = FALSE}
+sessionInfo()
+```
