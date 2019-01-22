@@ -143,20 +143,74 @@ accuracy.speeds <- accuracy.speeds[, c(15, 16, 17, 1:14)]
 # ** Mixed models ---------------------------------------------------------
 
 # **** Building dataframe -------------------------------------------------
+# Get accelerometer metric from primary and secondary accelerometers
+MAD.acc.pri <- pri.acc %>% 
+  dplyr::select(-c(Counts, ENMO)) %>% 
+  na.omit() %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+MAD.acc.sec <- sec.acc %>% 
+  dplyr::select(-ENMO) %>% 
+  na.omit() %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+ENMO.acc.pri <- pri.acc %>% 
+  dplyr::select(-c(Counts, MAD)) %>% 
+  na.omit() %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+ENMO.acc.sec <- sec.acc %>% 
+  dplyr::select(-MAD) %>% 
+  na.omit() %>% 
+  filter(speed == 3 | speed == 4 | speed == 5)
+
+names(MAD.acc.pri)[3]  <- "primary"
+names(MAD.acc.sec)[3]  <- "secondary"
+names(ENMO.acc.pri)[3] <- "primary"
+names(ENMO.acc.sec)[3] <- "secondary"
+
+# Merge dataframes
+MAD.acc <- join_all(
+  list(MAD.acc.pri, MAD.acc.sec),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    primary, secondary,
+    key = "accelerometer",
+    value = "MAD"
+  )
+MAD.acc$speed <- as.factor(MAD.acc$speed)
+MAD.acc$accelerometer <- as.factor(MAD.acc$accelerometer)
+
+ENMO.acc <- join_all(
+  list(ENMO.acc.pri, ENMO.acc.sec),
+  by = c("ID", "speed"),
+  type = "left"
+) %>% 
+  as.tibble() %>% 
+  gather(
+    primary, secondary,
+    key = "accelerometer",
+    value = "ENMO"
+  )
+ENMO.acc$speed <- as.factor(ENMO.acc$speed)
+ENMO.acc$accelerometer <- as.factor(ENMO.acc$accelerometer)
+
 # Get measured and predicted VO2/kg values
 MAD.pri <- MAD.pri.prediction %>% 
-  dplyr::select(ID, speed, VO2.kg_predicted)
+  dplyr::select(ID, speed, VO2.kg_predicted, VO2.kg)
 MAD.sec <- MAD.LOOCV %>% 
   dplyr::select(ID, speed, VO2.kg_predicted)
 ENMO.pri <- ENMO.pri.prediction %>% 
-  dplyr::select(ID, speed, VO2.kg_predicted)
+  dplyr::select(ID, speed, VO2.kg_predicted, VO2.kg)
 ENMO.sec <- ENMO.LOOCV %>% 
   dplyr::select(ID, speed, VO2.kg_predicted)
 
-names(MAD.pri)[3]  <- "primary"
-names(MAD.sec)[3]  <- "secondary"
-names(ENMO.pri)[3] <- "primary"
-names(ENMO.sec)[3] <- "secondary"
+names(MAD.pri)[3]  <- "primary_acc"
+names(MAD.pri)[4]  <- "measured"
+names(MAD.sec)[3]  <- "secondary_acc"
+names(ENMO.pri)[3] <- "primary_acc"
+names(ENMO.pri)[4] <- "measured"
+names(ENMO.sec)[3] <- "secondary_acc"
 
 # Merge dataframes
 MAD.VO2.kg <- join_all(
@@ -166,12 +220,12 @@ MAD.VO2.kg <- join_all(
 ) %>% 
   as.tibble() %>% 
   gather(
-    primary, secondary,
-    key = "accelerometer",
+    primary_acc, secondary_acc, measured,
+    key = "group",
     value = "VO2.kg"
   )
 MAD.VO2.kg$speed <- as.factor(MAD.VO2.kg$speed)
-MAD.VO2.kg$accelerometer <- as.factor(MAD.VO2.kg$accelerometer)
+MAD.VO2.kg$group <- as.factor(MAD.VO2.kg$group)
 
 ENMO.VO2.kg <- join_all(
   list(ENMO.pri, ENMO.sec),
@@ -180,65 +234,119 @@ ENMO.VO2.kg <- join_all(
 ) %>% 
   as.tibble() %>% 
   gather(
-    primary, secondary,
-    key = "accelerometer",
+    primary_acc, secondary_acc, measured,
+    key = "group",
     value = "VO2.kg"
   )
 ENMO.VO2.kg$speed <- as.factor(ENMO.VO2.kg$speed)
-ENMO.VO2.kg$accelerometer <- as.factor(ENMO.VO2.kg$accelerometer)
+ENMO.VO2.kg$group <- as.factor(ENMO.VO2.kg$group)
 
 # **** Mixed models analysis ----------------------------------------------
+### Accelerometer metrics output
 # MAD
+MAD.acc.baseline <- lme(
+  fixed = MAD ~ 1,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.acc
+)
+
+MAD.acc.group <- lme(
+  fixed = MAD ~ accelerometer,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.acc
+)
+
+MAD.acc.interact <- lme(
+  fixed = MAD ~ accelerometer * speed,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = MAD.acc
+)
+
+anova(MAD.acc.baseline, MAD.acc.group, MAD.acc.interact)
+
+MAD.acc.posthoc <- lsmeans(MAD.acc.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+
+# ENMO
+ENMO.acc.baseline <- lme(
+  fixed = ENMO ~ 1,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.acc
+)
+
+ENMO.acc.group <- lme(
+  fixed = ENMO ~ accelerometer,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.acc
+)
+
+ENMO.acc.interact <- lme(
+  fixed = ENMO ~ accelerometer * speed,
+  random = ~ 1 | ID/speed/accelerometer,
+  method = "ML",
+  data = ENMO.acc
+)
+
+anova(ENMO.acc.baseline, ENMO.acc.group, ENMO.acc.interact)
+
+ENMO.acc.posthoc <- lsmeans(ENMO.acc.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+
+### VO2 predictions
+# VO2 by MAD
 MAD.baseline <- lme(
   fixed = VO2.kg ~ 1,
-  random = ~ 1 | ID/speed/accelerometer,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = MAD.VO2.kg
 )
 
 MAD.group <- lme(
-  fixed = VO2.kg ~ accelerometer,
-  random = ~ 1 | ID/speed/accelerometer,
+  fixed = VO2.kg ~ group,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = MAD.VO2.kg
 )
 
 MAD.interact <- lme(
-  fixed = VO2.kg ~ accelerometer * speed,
-  random = ~ 1 | ID/speed/accelerometer,
+  fixed = VO2.kg ~ group * speed,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = MAD.VO2.kg
 )
 
 anova(MAD.baseline, MAD.group, MAD.interact)
 
-MAD.posthoc <- lsmeans(MAD.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+MAD.posthoc <- lsmeans(MAD.interact, pairwise ~ group * speed, adjust = "tukey")
 
-# ENMO
+# VO2 by ENMO
 ENMO.baseline <- lme(
   fixed = VO2.kg ~ 1,
-  random = ~ 1 | ID/speed/accelerometer,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = ENMO.VO2.kg
 )
 
 ENMO.group <- lme(
-  fixed = VO2.kg ~ accelerometer,
-  random = ~ 1 | ID/speed/accelerometer,
+  fixed = VO2.kg ~ group,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = ENMO.VO2.kg
 )
 
 ENMO.interact <- lme(
-  fixed = VO2.kg ~ accelerometer * speed,
-  random = ~ 1 | ID/speed/accelerometer,
+  fixed = VO2.kg ~ group * speed,
+  random = ~ 1 | ID/speed/group,
   method = "ML",
   data = ENMO.VO2.kg
 )
 
 anova(ENMO.baseline, ENMO.group, ENMO.interact)
 
-ENMO.posthoc <- lsmeans(MAD.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
+ENMO.posthoc <- lsmeans(MAD.interact, pairwise ~ group * speed, adjust = "tukey")
 
 # Graphs ------------------------------------------------------------------
 # MAD
@@ -248,7 +356,7 @@ MAD.graph.df$speed[MAD.graph.df$speed == 3] <- 5
 MAD.graph.df$speed[MAD.graph.df$speed == 2] <- 4
 MAD.graph.df$speed[MAD.graph.df$speed == 1] <- 3
 
-MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = accelerometer)) +
+MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = group)) +
   stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
   stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
   stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
@@ -273,7 +381,7 @@ ENMO.graph.df$speed[ENMO.graph.df$speed == 3] <- 5
 ENMO.graph.df$speed[ENMO.graph.df$speed == 2] <- 4
 ENMO.graph.df$speed[ENMO.graph.df$speed == 1] <- 3
 
-ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = accelerometer)) +
+ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = group)) +
   stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
   stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
   stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
