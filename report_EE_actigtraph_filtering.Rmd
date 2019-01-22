@@ -375,6 +375,27 @@ ENMO.acc.posthoc
 
 In each speed, accelerometer metrics output values were significantly different between accelerometer (primary vs. secondary), with lower values for primary accelerometer.
 
+Descriptive statistics for both accelerometers and accelerometer metrics are shown in tables below.
+
+```{r metrics_descriptives}
+MAD.summary <- MAD.acc %>% 
+  group_by(accelerometer, speed) %>%
+  dplyr::summarise(
+    MAD_mean = round(mean(MAD), digits = 0),
+    MAD_sd   = round(sd(MAD), digits = 0)
+  )
+kable(MAD.summary)
+
+ENMO.summary <- ENMO.acc %>% 
+  group_by(accelerometer, speed) %>% 
+  dplyr::summarise(
+    ENMO_mean = round(mean(ENMO), digits = 0),
+    ENMO_sd   = round(sd(ENMO), digits = 0)
+  )
+kable(ENMO.summary)
+```
+
+
 #### VO~2~/kg values comparison
 
 Linear mixed models were built with VO~2~/kg as dependent variable, subject ID (within each speed within each accelerometer) as random effect and group * speed interaction as fixed effect. Baseline linear mixed models were also built with the same parameters as the formers, except for the fixed effect. These baseline models were created to assess whether the group had any effect on VO~2~/kg value.

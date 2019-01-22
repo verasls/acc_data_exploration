@@ -295,6 +295,22 @@ anova(ENMO.acc.baseline, ENMO.acc.group, ENMO.acc.interact)
 
 ENMO.acc.posthoc <- lsmeans(ENMO.acc.interact, pairwise ~ accelerometer * speed, adjust = "tukey")
 
+## Accelerometer metrics descriptives
+MAD.summary <- MAD.acc %>% 
+  group_by(accelerometer, speed) %>%
+  dplyr::summarise(
+    MAD_mean = round(mean(MAD), digits = 0),
+    MAD_sd   = round(sd(MAD), digits = 0)
+  )
+
+ENMO.summary <- ENMO.acc %>% 
+  group_by(accelerometer, speed) %>% 
+  dplyr::summarise(
+    ENMO_mean = round(mean(ENMO), digits = 0),
+    ENMO_sd   = round(sd(ENMO), digits = 0)
+  )
+##
+
 ### VO2 predictions
 # VO2 by MAD
 MAD.baseline <- lme(
@@ -348,7 +364,7 @@ anova(ENMO.baseline, ENMO.group, ENMO.interact)
 
 ENMO.posthoc <- lsmeans(MAD.interact, pairwise ~ group * speed, adjust = "tukey")
 
-# Graphs ------------------------------------------------------------------
+# ** Graphs ---------------------------------------------------------------
 # MAD
 MAD.graph.df <- MAD.VO2.kg
 MAD.graph.df$speed <- as.numeric(MAD.graph.df$speed)
