@@ -6,3 +6,4 @@ figs/
 output/
 doc/
 *.html
+data/counts_vert_vs_res/
