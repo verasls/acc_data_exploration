@@ -232,7 +232,7 @@ posthoc <- lsmeans(interact.model, pairwise ~ group * speed, adjust = "tukey")
 ```
 *Post  hoc* tests by speed can be found [here](https://www.dropbox.com/s/oe4z2nn0koi2xdh/abstract2_posthocs.csv?dl=0).
 
-*Post  hoc* tests showed that pRGRF values predicted with correct accelerometer placement did not differ from each other neither from pRGRF measured by force plates (*p*>0.05). All pRGRF values predicted with incorrect accelerometer placement significantly differed from each other and from measured pRGRF (*p*<0.001).
+*Post  hoc* tests showed that pRGRF values predicted with correct accelerometer placement did not differ from each other neither from pRGRF measured by force plates (*p*>0.05). All pRGRF values predicted with incorrect accelerometer placement significantly differed from each other and from measured pRGRF from speed 3 onwards (*p*<0.001).
 
 ### Figure and table
 
