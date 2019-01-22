@@ -1,0 +1,178 @@
+---
+title: 'Abstract 4: Report'
+author: "Lucas Veras"
+date: "2019-01-22"
+output: 
+  html_document:
+    toc: true
+    code_folding: show
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r prep, echo = FALSE}
+# Load packages and functions ---------------------------------------------
+library(knitr)
+library(tidyverse)
+library(pROC)
+library(irr)
+source("R/getMET.R")
+source("R/getMETstd.R")
+source("R/getMETcategories2.R")
+source("R/cvROC2.R")
+source("R/getPercentAgreement.R")
+
+hip.base <- read_csv("data/regressions_comparison/Hip_sec_base.csv")
+hip.acc  <- read_csv("data/regressions_comparison/Hip_sec_acc_metrics.csv")
+
+hip <- hip.base %>% 
+  left_join(hip.acc, by = c("ID", "speed")) %>% 
+  dplyr::select(-c(Evaluation, Date, V.O2, RER, HR, BF, V.E, V.CO2, Weight, BMI, Age, Sex, MAD))
+```
+
+## Overview
+
+Nowadays several studies use accelerometer cut-points to identify moderate-to-vigorous physical activity (MVPA). The MVPA correct classification can be dependent of resting metabolic rate (RMR, ml O~2~^.^kg^-1.^min^-1^) measurement in the calibration process, since that metabolic equivalents (METs) can be different if calculated based on individual RMR or based on standard 3.5 ml O~2~^.^kg^-1.^min^-1^. In spite of this methodological issue, most calibration studies have used standard METs calculation, not knowing its impact in MVPA misclassification, especially in those people with higher or lower RMR, such as severe obese people. Therefore, the aim of this study was to compare the MVPA classification obtained from cut-points based on individual and standard METs.
+
+## Data analysis
+
+### Sample descriptives
+```{r sample_descriptives, echo = FALSE}
+samp.desc <- read_csv("data/regressions_comparison/sample_descriptives_data.csv")
+descriptives <- summarise(
+  .data = samp.desc,
+  age_mean    = round(mean(age), digits = 2),
+  age_sd      = round(sd(age), digits = 2),
+  weight_mean = round(mean(weight_kg), digits = 2),
+  weight_sd   = round(sd(weight_kg), digits = 2),
+  height_mean = round(mean(height_cm), digits = 2),
+  height_sd   = round(sd(height_cm), digits = 2),
+  BMI_mean    = round(mean(BMI_kgm2), digits = 2),
+  BMI_sd      = round(sd(BMI_kgm2), digits = 2),
+  fat_mean    = round(mean(body_fat), digits = 2),
+  fat_sd      = round(sd(body_fat), digits = 2)
+)
+sex <- table(samp.desc$sex)
+
+RMR <- hip %>% 
+  filter(speed == 0) %>% 
+  summarise(
+    mean = round(mean(VO2.kg), digits = 2), 
+    std = round(sd(VO2.kg), digits = 2)
+  )
+```
+
+`r nrow(samp.desc)` class II-II obese adults (`r sex[[2]]` males, `r sex[[1]]` females; age: `r descriptives$age_mean`±`r descriptives$age_sd`yrs; weight: `r descriptives$weight_mean`±`r descriptives$weight_sd`kg; height: `r descriptives$height_mean`±`r descriptives$height_sd`cm; body fat: `r descriptives$fat_mean`±`r descriptives$fat_sd`%; BMI: `r descriptives$BMI_mean`±`r descriptives$BMI_sd`kg^.^m^-1^). RMR was `r RMR[[1]]`±`r RMR[[2]]`ml O~2~^.^kg^-1.^min^-1^.
+
+### MET values computation
+
+Two new variables were created.
+
+- **MET_ind**: with individual MET values, based on individual RMR;
+- **MET_std**: with standard MET values, based on 3.5ml O~2~^.^kg^-1.^min^-1^.
+
+For each of theses new variables, a categorical variable indicating MVPA category was created (1 = MVPA; 0 = other intensity category). 
+
+```{r MET}
+# Individual MET (based on individual resting metabolic rate)
+hip <- do.call(rbind, (lapply(unique(hip$ID), getMET, df = hip)))
+# Standard MET (based on 3.5 mlO2/kg/min)
+hip <- do.call(rbind, (lapply(unique(hip$ID), getMETstd, df = hip)))
+
+names(hip)[5] <- "MET_ind"
+hip <- na.omit(hip)
+
+# Getting MVPA categories
+hip$MVPA_MET_ind_CAT <- NA
+hip$MVPA_MET_std_CAT <- NA
+for (i in 1:nrow(hip)) {
+  # MET_ind
+  if (hip$MET_ind[i] >= 3) {
+    hip$MVPA_MET_ind_CAT[i] <- 1
+  } else {
+    hip$MVPA_MET_ind_CAT[i] <- 0
+  }
+  # MET_std
+  if (hip$MET_std[i] >= 3) {
+    hip$MVPA_MET_std_CAT[i] <- 1
+  } else {
+    hip$MVPA_MET_std_CAT[i] <- 0
+  }
+}
+```
+
+### ROC curves
+
+ROC curves were used to obtain ENMO-based MVPA cut-points for individual and standard METs.
+
+```{r ROC}
+ROC.ind     <- roc(MVPA_MET_ind_CAT ~ ENMO, data = hip, ci = TRUE) 
+ROC.std     <- roc(MVPA_MET_std_CAT ~ ENMO, data = hip, ci = TRUE) 
+cp.MVPA.ind <- coords(ROC.ind, x = "best", best.method = "closest.topleft")
+cp.MVPA.std <- coords(ROC.std, x = "best", best.method = "closest.topleft")
+
+ROC.summary <- data.frame(
+  MET_used    = c("individual", "standard"),
+  threshold   = c(cp.MVPA.ind[1], cp.MVPA.std[1]),
+  AUC         = c(as.numeric(ROC.ind[9]), as.numeric(ROC.std[9])),
+  AUC_95Ci    = c(capture.output(ROC.ind[16])[2], capture.output(ROC.std[16])[2]),
+  sensitivity = c(cp.MVPA.ind[3], cp.MVPA.std[3]),
+  specificity = c(cp.MVPA.ind[2], cp.MVPA.std[2])
+  )
+```
+
+Sensitivity, specificity and the area under the curve for each cutpoint are shown below
+
+```{r ROC_summary}
+kable(ROC.summary)
+```
+
+
+ROC curve for individual METs is shown below
+
+```{r ROC_ind, dev = 'svg'}
+plot.roc(smooth(ROC.ind))
+```
+
+ROC curve for standard METs is shown below
+
+```{r ROC_std, dev = 'svg'}
+plot.roc(smooth(ROC.std))
+```
+
+
+### Validity analysis
+
+The validity of the cut-points developed were then analyzed through leave-one-out cross-validation (LOOCV) method. Hence, each participant’s data was separated into a testing dataset (one at a time) with the remaining data being in the training dataset. New ROC, with the same structure as determined for the entire sample, were developed using the training dataset to identify PAI for the only participant in the testing dataset. This process was repeated for all participants (`r nrow(samp.desc)` times). Data from testing dataset were used in the following validation analyses and can be found [here](https://www.dropbox.com/s/6lbawbw8535laer/abstract5_ROC_LOOCV.csv?dl=0).
+
+```{r LOOCV}
+ROC.LOOCV <- do.call(rbind, (lapply(unique(hip$ID), cvROC, df = hip)))
+```
+
+Classification agreement through unweighted Kappa statistic for MVPA cut-points based on individual METs:
+```{r kappa_ind}
+K.ind <- kappa2(ROC.LOOCV[, c("MVPA_MET_ind_CAT", "MVPA_MET_ind_by_ENMO_CAT")])
+K.ind
+```
+
+Classification agreement through unweighted Kappa statistic for MVPA cut-points based on standard METs:
+```{r kappa_std}
+K.std <- kappa2(ROC.LOOCV[, c("MVPA_MET_ind_CAT", "MVPA_MET_std_by_ENMO_CAT")])
+K.std
+```
+
+```{r percent_agreement, echo = FALSE}
+ind.agree <- getPercentAgreement(ROC.LOOCV, "MVPA_MET_ind_CAT", "MVPA_MET_ind_by_ENMO_CAT")
+std.agree <- getPercentAgreement(ROC.LOOCV, "MVPA_MET_ind_CAT", "MVPA_MET_std_by_ENMO_CAT")
+```
+The percent agreement was `r round(ind.agree, digits = 0)`% for individual METs and `r round(std.agree, digits = 0)`% for standard METs.
+
+## R session info
+
+```{r session_info, echo = FALSE}
+sessionInfo()
+```
