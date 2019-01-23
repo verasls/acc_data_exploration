@@ -4,7 +4,9 @@ author: "Lucas Veras"
 date: "2019-01-21"
 output: 
   html_document:
+    keep_md: true
     toc: true
+    code_folding: show
 editor_options: 
   chunk_output_type: console
 ---
