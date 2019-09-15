@@ -3,17 +3,17 @@ library(plyr)
 library(nlme)
 library(lsmeans)
 library(ggplot2)
-source("R/cvLR.R")
-source("R/accuracyIndices.R")
+source("code/functions/cvLR.R")
+source("code/functions/accuracyIndices.R")
 
 # File preparation --------------------------------------------------------
 
 back <- read.csv("data/GRF_ACC_misplacement/Back_sec.csv") %>%
-  as.tibble() %>% 
+  as_tibble() %>% 
   dplyr::select(-name)
 
 hip <- read.csv("data/GRF_ACC_misplacement/Hip_sec.csv") %>%
-  as.tibble() %>% 
+  as_tibble() %>% 
   dplyr::select(-name)
 
 # Data analysis -----------------------------------------------------------
@@ -42,9 +42,9 @@ write.csv(
 # ** Predict model based on other placement data --------------------------
 
 back.data.by.hip.LR <- cbind(back, predict(hip.LR, newdata = back, level = 0)) %>% 
-  as.tibble()
+  as_tibble()
 hip.data.by.back.LR <- cbind(hip, predict(back.LR, newdata = hip, level = 0)) %>% 
-  as.tibble()
+  as_tibble()
 names(back.data.by.hip.LR)[8] <- "back_ACC_by_hip_LR"
 names(hip.data.by.back.LR)[8] <- "hip_ACC_by_back_LR"
 
@@ -164,7 +164,7 @@ all.pRGRF <- join_all(
   by = c("ID", "speed"),
   type = "left"
 ) %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   gather(
     measured, back_ACC_by_back_LR, hip_ACC_by_hip_LR, back_ACC_by_hip_LR, hip_ACC_by_back_LR,
     key = "group",
