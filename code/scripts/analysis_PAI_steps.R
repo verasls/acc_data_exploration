@@ -1,19 +1,19 @@
 library(tidyverse)
 library(pROC)
 library(irr)
-source("R/getMET.R")
-source("R/getMETcategories.R")
-source("R/cvROC.R")
-source("R/getPercentAgreement.R")
+source("code/functions/getMET.R")
+source("code/functions/getMETcategories.R")
+source("code/functions/cvROC.R")
+source("code/functions/getPercentAgreement.R")
 
 # File preparation --------------------------------------------------------
 
 # ** Merging related databases -----------------------------------------------
 
 hip.steps  <- read.csv("data/PAI_steps/raw/Hip_pri_steps_means.csv") %>%
-  as.tibble()
+  as_tibble()
 hip.card <- read.csv("data/PAI_steps/raw/Hip_pri_raw.csv") %>%
-  as.tibble()
+  as_tibble()
 
 hip.df <- hip.card %>%
   select(-c(BF, V.E, V.CO2, Evaluation, Date)) %>%
