@@ -2,11 +2,11 @@
 library(tidyverse)
 library(pROC)
 library(irr)
-source("R/getMET.R")
-source("R/getMETstd.R")
-source("R/getMETcategories2.R")
-source("R/cvROC2.R")
-source("R/getPercentAgreement.R")
+source("code/functions/getMET.R")
+source("code/functions/getMETstd.R")
+source("code/functions/getMETcategories2.R")
+source("code/functions/cvROC2.R")
+source("code/functions/getPercentAgreement.R")
 
 # File preparation --------------------------------------------------------
 
