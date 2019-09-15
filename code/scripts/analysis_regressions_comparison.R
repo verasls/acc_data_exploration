@@ -1,8 +1,8 @@
 # Load packages and functions ---------------------------------------------
 library(tidyverse)
 library(nlme)
-source("R/cvMixedModel.R")
-source("R/accuracyIndices.R")
+source("code/functions/cvMixedModel.R")
+source("code/functions/accuracyIndices.R")
 
 # File preparation --------------------------------------------------------
 
