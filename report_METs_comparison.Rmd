@@ -1,10 +1,9 @@
 ---
-title: 'Abstract 4: Report'
+title: "Accelerometer calibration: The importance of individual resting metabolic rate measurement to correctly identify moderate-to-vigorous physical activity intensity"
 author: "Lucas Veras"
-date: "2019-01-22"
+date: "`r Sys.Date()`"
 output: 
   html_document:
-    keep_md: true
     toc: true
     code_folding: show
 editor_options: 
@@ -21,11 +20,11 @@ library(knitr)
 library(tidyverse)
 library(pROC)
 library(irr)
-source("R/getMET.R")
-source("R/getMETstd.R")
-source("R/getMETcategories2.R")
-source("R/cvROC2.R")
-source("R/getPercentAgreement.R")
+source("code/functions/getMET.R")
+source("code/functions/getMETstd.R")
+source("code/functions/getMETcategories2.R")
+source("code/functions/cvROC2.R")
+source("code/functions/getPercentAgreement.R")
 
 hip.base <- read_csv("data/regressions_comparison/Hip_sec_base.csv")
 hip.acc  <- read_csv("data/regressions_comparison/Hip_sec_acc_metrics.csv")

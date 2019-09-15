@@ -1,10 +1,9 @@
 ---
-title: "Abstract 1: Report"
+title: "Moderate-to-vigorous physical activity intensity cut-point for walking steps in patients with class II-III obesity"
 author: "Lucas Veras"
-date: "2019-01-15"
+date: "`r Sys.Date()`"
 output: 
   html_document:
-    keep_md: true
     toc: true
     code_folding: show
 editor_options: 
@@ -17,7 +16,7 @@ knitr::opts_chunk$set(fig.width = 6, fig.height = 4,
 ```
 
 ```{r analysis_script, echo = FALSE}
-source("analysis_PAI_steps.R")
+source("code/scripts/analysis_PAI_steps.R")
 ```
 ## Overview
 

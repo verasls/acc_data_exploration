@@ -1,10 +1,9 @@
 ---
-title: 'Abstract 2: Report'
+title: "Is the correct accelerometer placement at the waist such a big deal?"
 author: "Lucas Veras"
-date: "2019-01-17"
+date: "`r Sys.Date()`"
 output: 
   html_document:
-    keep_md: true
     toc: true
     code_folding: show
 editor_options: 
@@ -25,15 +24,15 @@ library(plyr)
 library(nlme)
 library(lsmeans)
 library(ggplot2)
-source("R/cvLR.R")
-source("R/accuracyIndices.R")
+source("code/functions/cvLR.R")
+source("code/functions/accuracyIndices.R")
 
 back <- read.csv("data/GRF_ACC_misplacement/Back_sec.csv") %>%
-  as.tibble() %>% 
+  as_tibble() %>% 
   dplyr::select(-name)
 
 hip <- read.csv("data/GRF_ACC_misplacement/Hip_sec.csv") %>%
-  as.tibble() %>% 
+  as_tibble() %>% 
   dplyr::select(-name)
 ```
 
@@ -63,9 +62,9 @@ Data containing LOOCV predictions for back accelerometer placement can be found 
 Hip model were also tested with back peak acceleration data and back model with hip peak acceleration data.
 ```{r cross_prediction}
 back.data.by.hip.LR <- cbind(back, predict(hip.LR, newdata = back, level = 0)) %>% 
-  as.tibble()
+  as_tibble()
 hip.data.by.back.LR <- cbind(hip, predict(back.LR, newdata = hip, level = 0)) %>% 
-  as.tibble()
+  as_tibble()
 names(back.data.by.hip.LR)[8] <- "back_ACC_by_hip_LR"
 names(hip.data.by.back.LR)[8] <- "hip_ACC_by_back_LR"
 ```
@@ -197,7 +196,7 @@ all.pRGRF <- join_all(
   by = c("ID", "speed"),
   type = "left"
 ) %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   gather(
     measured, back_ACC_by_back_LR, hip_ACC_by_hip_LR, back_ACC_by_hip_LR, hip_ACC_by_back_LR,
     key = "group",
