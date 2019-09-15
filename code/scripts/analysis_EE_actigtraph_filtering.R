@@ -3,8 +3,8 @@ library(tidyverse)
 library(plyr)
 library(nlme)
 library(lsmeans)
-source("R/cvMixedModel.R")
-source("R/accuracyIndices.R")
+source("code/functions/cvMixedModel.R")
+source("code/functions/accuracyIndices.R")
 
 # File preparation --------------------------------------------------------
 
@@ -80,7 +80,7 @@ MAD.pred <- predict(
   level = 0
 )
 MAD.pri.prediction <- cbind(na.omit(pri), MAD.pred)
-MAD.pri.prediction <- as.tibble(MAD.pri.prediction)
+MAD.pri.prediction <- as_tibble(MAD.pri.prediction)
 names(MAD.pri.prediction)[16] <- "VO2.kg_predicted"
 
 ENMO.pred <- predict(
@@ -89,7 +89,7 @@ ENMO.pred <- predict(
   level = 0
 )
 ENMO.pri.prediction <- cbind(na.omit(pri), ENMO.pred)
-ENMO.pri.prediction <- as.tibble(ENMO.pri.prediction)
+ENMO.pri.prediction <- as_tibble(ENMO.pri.prediction)
 names(ENMO.pri.prediction)[16] <- "VO2.kg_predicted"
 
 # ** Select desired speeds ------------------------------------------------
@@ -172,7 +172,7 @@ MAD.acc <- join_all(
   by = c("ID", "speed"),
   type = "left"
 ) %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   gather(
     primary, secondary,
     key = "accelerometer",
@@ -186,7 +186,7 @@ ENMO.acc <- join_all(
   by = c("ID", "speed"),
   type = "left"
 ) %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   gather(
     primary, secondary,
     key = "accelerometer",
@@ -218,7 +218,7 @@ MAD.VO2.kg <- join_all(
   by = c("ID", "speed"),
   type = "left"
 ) %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   gather(
     primary_acc, secondary_acc, measured,
     key = "group",
@@ -232,7 +232,7 @@ ENMO.VO2.kg <- join_all(
   by = c("ID", "speed"),
   type = "left"
 ) %>% 
-  as.tibble() %>% 
+  as_tibble() %>% 
   gather(
     primary_acc, secondary_acc, measured,
     key = "group",
