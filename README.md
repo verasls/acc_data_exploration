@@ -1,41 +1,30 @@
-# Abstracts for ECSS Prague 2019
+# Exploratory analysis of accelerometry data
 
+Code and data analysis reports for exploratory analysis of some accelerometry aspects
 
-Data, code and reports for 5 abstracts to be submited to the ECSS 2019 Congress.
+The repository is organized as follows:
 
----
+```
+.
+├── code/ 								
+│   ├── functions/			# R code with function definitions
+│   └── scripts/			# R code with data analysis scripts
+│       └── aux/			# R code with some auxiliary scripts to process data
+├── .gitignore	
+├── LICENSE
+├── README.md 							
+├── acc_data_exploration.Rproj
+├── *.Rmd 				# Data analysis reports Rmd files
+```
 
-The 5 abstracts are:
+A quick briefing about the analysis can be seen below, with links to the html version of the reports.
 
-- **Abstract 1**: Moderate-to-vigorous cut-points for walking steps in people with class II-III obesity (PAI_steps)
-- **Abstract 2**: Is the correct accelerometer placement at waist important? (GRF_ACC_misplacement)
-- **Abstract 3**: The effect of ActiGraph filtering on raw acceleration metrics and its influence on prediction accuracy of energy expenditure (EE_actigraph_filtering)
-- **Abstract 4**: Walking energy expenditure prediction model for severe obese people based on raw acceleration metrics and its comparison with those developed for non-obese people (regressions_comparison)
-- **Abstract 5**: Accelerometer calibration: The importance of individual resting metabolic rate measurement to correctly identify moderate-to-vigorous intensity (METs_comparison)
+EE_regressions_comparison: develop an equation to predict energy expenditure in class II-III obese people, determine its prediction accuracy and compare it with those equations developed for non-obese people
 
----
+GRF_ACC_misplacement: compare the effect of correct/incorrect acceleromter placement at waist line on peak ground reaction force prediction accuracy
 
-There are 2 subdirectpries in this repository:
+METs_comparison: compare the moderate-to-vigorous physical activity intensity classification obtained from cut-points based on individually determined (based on individual rest metablic rate) and standard (3.5 ml O<sub>2</sub><sup>.</sup>kg<sup>-1</sup>min<sup>-1</sup> ) METs
 
-1. R
-2. data
+PAI_steps: develop cut-points to classify moderate and vigorous physical activityin severely obese patients based on step counts data
 
-## Main directory contents
-
-Main directory contains R scripts and R markdown reports for the abstracts data analysis. Link to access html version of these reports is below.
-
-- [Abstract 1](https://www.dropbox.com/s/98ng25vjnf6hem6/abstract1_report.html?dl=0)
-- [Abstract 2](https://www.dropbox.com/s/w1wnpjary35xgm3/abstract2_report.html?dl=0)
-- [Abstract 3](https://www.dropbox.com/s/vwok77braowdkhi/abstract3_report.html?dl=0)
-- [Abstract 4](https://www.dropbox.com/s/ltnacreqoinm1vb/abstract4_report.html?dl=0)
-- [Abstract 5](https://www.dropbox.com/s/wyjala11gru5hxl/abstract5_report.html?dl=0)
-
-## R contents
-
-Subdirectory "R" contains all functions used.
-
-## data contents
-
-Subdirectory "data" contains csv data files for all 5 abstracts, separated in subdirectories.
-
----
+EE_actigraph_filtering: compare raw accelerometer metrics output and energy expenditure prediction accuracy between accelerometers with filtered and unfiltered data
