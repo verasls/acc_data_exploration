@@ -202,12 +202,24 @@ posthoc <- lsmeans(interact.model, pairwise ~ group * speed, adjust = "tukey")
 
 # ** Graph ----------------------------------------------------------------
 plot.df <- all.pRGRF
+plot.df$group <- revalue(
+  plot.df$group, 
+  c(
+    "back_ACC_by_back_LR" = "Back prediction model with back accelerometer data",
+    "back_ACC_by_hip_LR" = "Hip prediction model with back accelerometer data",
+    "hip_ACC_by_back_LR" = "Back prediction model with hip accelerometer data",
+    "hip_ACC_by_hip_LR" = "Hip prediction model with hip accelerometer data",
+    "measured" = "Actual"
+   )
+  )
+plot.df$group = factor(plot.df$group,levels(plot.df$group)[c(5, 4, 1, 2, 3)])
 plot.df$speed <- as.numeric(plot.df$speed)
 
 pRGRF_by_group <- ggplot(data = plot.df, aes(x = speed, y = pRGRF, colour = group)) + 
   stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
   stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
   stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  scale_colour_manual(values = c("#E69F00", "#009E73", "#CC79A7", "#0072B2", "black")) +
   theme_bw() +
   theme(
     panel.grid.major = element_blank(),
@@ -216,12 +228,22 @@ pRGRF_by_group <- ggplot(data = plot.df, aes(x = speed, y = pRGRF, colour = grou
     axis.line = element_line(size = 0.5, colour = "Black"),
     axis.ticks = element_line(size = 0.5, colour = "Black"),
     axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
+    plot.title = element_text(face = "bold"),
+    legend.title = element_blank(),
+    legend.position = "bottom"
   ) +
   scale_y_continuous(breaks = seq(from = 800, to = 1500, by = 100)) +
   expand_limits(y = c(800, 1500)) +
-  ggtitle("Figure 1")
+  labs(
+    x = bquote("Speed" ~ (km^. ~ h^-1)),
+    y = "pRGRF (N)"
+  ) +
+  guides(colour = guide_legend(ncol = 2))
 
+ggsave(
+  filename = "figs/abstract_2_fig_1.pdf",
+  plot = pRGRF_by_group, width = 30, height = 20, units = "cm"
+)
 
 # ** pRGRF means by group -------------------------------------------------
 
