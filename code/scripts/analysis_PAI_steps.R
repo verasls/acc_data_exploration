@@ -5,7 +5,7 @@ source("code/functions/getMET.R")
 source("code/functions/getMETcategories.R")
 source("code/functions/cvROC.R")
 source("code/functions/getPercentAgreement.R")
-
+library(plotROC)
 # File preparation --------------------------------------------------------
 
 # ** Merging related databases -----------------------------------------------
@@ -60,6 +60,17 @@ AUC.95CI    <- c(capture.output(ROC.mod[16])[2], capture.output(ROC.vig[16])[2])
 sensitivity <- c(cp.ROC.mod[3], cp.ROC.vig[3])
 specificity <- c(cp.ROC.mod[2], cp.ROC.vig[2])
 ROC.summary <- data.frame(intens.cat, threshold, AUC, AUC.95CI, sensitivity, specificity)
+
+# Plot and save ROC curve
+pdf("figs/abstract_1_fig_1.pdf")
+plot(smooth(ROC.mod), col = "blue", legacy.axes = TRUE, identity = FALSE, axes = FALSE, xlab = "", ylab = "")
+axis(1, pos = 0, at = seq(0, 1, 0.2))
+axis(2, pos = 1, at = seq(0, 1, 0.2))
+axis(3, pos = 1, labels = FALSE, lwd.ticks = 0)
+axis(4, pos = 0, labels = FALSE, lwd.ticks = 0)
+mtext("1 - Specificity", side=1, line = 3)
+mtext("1 - Specificity", side=2, line = 2)
+dev.off()
 
 # ** ROC leave-one-out cross validation -----------------------------------
 
