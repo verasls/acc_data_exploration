@@ -1,6 +1,7 @@
 # Load packages and functions ---------------------------------------------
 library(tidyverse)
 library(nlme)
+library(cowplot)
 source("code/functions/cvMixedModel.R")
 source("code/functions/accuracyIndices.R")
 
@@ -119,17 +120,12 @@ BAplot.MAD.our <- ggplot(data = MAD.LOOCV, aes(x = ((VO2.kg + VO2.kg_predicted) 
       (1.96 * sd(MAD.LOOCV$VO2.kg - MAD.LOOCV$VO2.kg_predicted)),
     linetype = "dotted"
   ) +
-  scale_y_continuous(limits = c(-6, 6), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(0, 20), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-12, 12), expand = c(0, 0), breaks = seq(-12, 12, 2)) +
+  scale_x_continuous(limits = c(0, 25), expand = c(0, 0)) +
   theme_classic() +
-  theme(
-    axis.line = element_line(size = 1, colour = "Black"),
-    axis.ticks = element_line(size = 1, colour = "Black"),
-    axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
-  ) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
   labs(
-    title = "Figure 1",
+    title = "MAD - Our equation",
     x = bquote("Mean of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1)),
     y = bquote("Difference of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1))
   )
@@ -148,17 +144,12 @@ BAplot.MAD.VahY <- ggplot(data = MAD.VahY, aes(x = ((VO2.kg + VO2.kg_predicted) 
       (1.96 * sd(MAD.VahY$VO2.kg - MAD.VahY$VO2.kg_predicted)),
     linetype = "dotted"
   ) +
-  scale_y_continuous(limits = c(-12, 4), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-12, 12), expand = c(0, 0), breaks = seq(-12, 12, 2)) +
   scale_x_continuous(limits = c(0, 25), expand = c(0, 0)) +
   theme_classic() +
-  theme(
-    axis.line = element_line(size = 1, colour = "Black"),
-    axis.ticks = element_line(size = 1, colour = "Black"),
-    axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
-  ) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
   labs(
-    title = "Figure 2",
+    title = "MAD - Vähä-Ypyä's equation",
     x = bquote("Mean of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1)),
     y = bquote("Difference of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1))
   )
@@ -177,17 +168,12 @@ BAplot.ENMO.our <- ggplot(data = ENMO.LOOCV, aes(x = ((VO2.kg + VO2.kg_predicted
       (1.96 * sd(ENMO.LOOCV$VO2.kg - ENMO.LOOCV$VO2.kg_predicted)),
     linetype = "dotted"
   ) +
-  scale_y_continuous(limits = c(-6, 6), expand = c(0, 0)) +
-  scale_x_continuous(limits = c(0, 20), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-10, 10), expand = c(0, 0), breaks = seq(-10, 10, 2)) +
+  scale_x_continuous(limits = c(0, 25), expand = c(0, 0)) +
   theme_classic() +
-  theme(
-    axis.line = element_line(size = 1, colour = "Black"),
-    axis.ticks = element_line(size = 1, colour = "Black"),
-    axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
-  ) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
   labs(
-    title = "Figure 3",
+    title = "ENMO - our equation",
     x = bquote("Mean of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1)),
     y = bquote("Difference of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1))
   )
@@ -206,17 +192,29 @@ BAplot.ENMO.Hild <- ggplot(data = ENMO.Hild, aes(x = ((VO2.kg + VO2.kg_predicted
       (1.96 * sd(ENMO.Hild$VO2.kg - ENMO.Hild$VO2.kg_predicted)),
     linetype = "dotted"
   ) +
-  scale_y_continuous(limits = c(-10, 2), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-10, 10), expand = c(0, 0), breaks = seq(-10, 10, 2)) +
   scale_x_continuous(limits = c(0, 25), expand = c(0, 0)) +
   theme_classic() +
-  theme(
-    axis.line = element_line(size = 1, colour = "Black"),
-    axis.ticks = element_line(size = 1, colour = "Black"),
-    axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
-  ) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5)) +
   labs(
-    title = "Figure 4",
+    title = "ENMO - Hildebrand's equation",
     x = bquote("Mean of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1)),
     y = bquote("Difference of Measured and Predicted" ~ VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1))
   )
+
+# Plot grid ---------------------------------------------------------------
+
+BA_plot_grid <- plot_grid(
+  BAplot.MAD.our,
+  BAplot.MAD.VahY,
+  BAplot.ENMO.our,
+  BAplot.ENMO.Hild,
+  labels = c("", "", "", ""),
+  align  = "h", vjust = 1, label_size = 16,
+  ncol   = 2, nrow = 2
+)
+
+ggsave(
+  filename = "figs/abstract_4_fig_1.pdf",
+  plot = BA_plot_grid, width = 50, height = 35, units = "cm"
+)
