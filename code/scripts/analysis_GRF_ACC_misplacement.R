@@ -219,7 +219,7 @@ pRGRF_by_group <- ggplot(data = plot.df, aes(x = speed, y = pRGRF, colour = grou
   stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
   stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
   stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
-  scale_colour_manual(values = c("#E69F00", "#009E73", "#CC79A7", "#0072B2", "black")) +
+  scale_colour_manual(values = c("black", "#E69F00", "#009E73", "#CC79A7", "#0072B2")) +
   theme_bw() +
   theme(
     panel.grid.major = element_blank(),
