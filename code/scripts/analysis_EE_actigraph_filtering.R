@@ -402,7 +402,7 @@ MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = gro
   labs(
     title = "MAD",
     x = bquote("Speed" ~ (km^. ~ h^-1)),
-    y = bquote(VO[2] ~ "/ kg")
+    y = bquote(VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1))
   )
 
 ggsave(
@@ -447,7 +447,7 @@ ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = g
   labs(
     title = "ENMO",
     x = bquote("Speed" ~ (km^. ~ h^-1)),
-    y = bquote(VO[2] ~ "/ kg")
+    y = bquote(VO[2] ~ (ml^. ~ kg^-1~ . ~ min^-1))
   )
 
 ggsave(
