@@ -371,11 +371,20 @@ MAD.graph.df$speed <- as.numeric(MAD.graph.df$speed)
 MAD.graph.df$speed[MAD.graph.df$speed == 3] <- 5
 MAD.graph.df$speed[MAD.graph.df$speed == 2] <- 4
 MAD.graph.df$speed[MAD.graph.df$speed == 1] <- 3
+MAD.graph.df$group <- revalue(
+  MAD.graph.df$group,
+  c(
+    "measured" = "Actual",
+    "primary_acc" = "Primary accelerometer",
+    "secondary_acc" = "Secondary accelerometer"
+  )
+)
 
 MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = group)) +
-  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
-  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.2)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.2)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, position = position_dodge(0.2)) +
+  scale_colour_manual(values = c("black", "#0072B2", "#E69F00")) +
   scale_x_continuous(breaks = c(3, 4, 5)) +
   scale_y_continuous(breaks = seq(from = 9, to = 15)) + 
   theme_bw() +
@@ -386,9 +395,20 @@ MAD.graph <- ggplot(data = MAD.graph.df, aes(x = speed, y = VO2.kg, colour = gro
     axis.line = element_line(size = 0.5, colour = "Black"),
     axis.ticks = element_line(size = 0.5, colour = "Black"),
     axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.position = "bottom"
   ) +
-  ggtitle("Figure 1")
+  labs(
+    title = "MAD",
+    x = bquote("Speed" ~ (km^. ~ h^-1)),
+    y = bquote(VO[2] ~ "/ kg")
+  )
+
+ggsave(
+  filename = "figs/abstract_3_fig_1.pdf",
+  plot = MAD.graph, width = 30, height = 20, units = "cm"
+)
 
 # ENMO
 ENMO.graph.df <- ENMO.VO2.kg
@@ -396,11 +416,20 @@ ENMO.graph.df$speed <- as.numeric(ENMO.graph.df$speed)
 ENMO.graph.df$speed[ENMO.graph.df$speed == 3] <- 5
 ENMO.graph.df$speed[ENMO.graph.df$speed == 2] <- 4
 ENMO.graph.df$speed[ENMO.graph.df$speed == 1] <- 3
+ENMO.graph.df$group <- revalue(
+  ENMO.graph.df$group,
+  c(
+    "measured" = "Actual",
+    "primary_acc" = "Primary accelerometer",
+    "secondary_acc" = "Secondary accelerometer"
+  )
+)
 
 ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = group)) +
-  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.5)) +
-  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.5)) +
-  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.4, position = position_dodge(0.5)) +
+  stat_summary(fun.y = mean, geom = "point", position = position_dodge(0.2)) +
+  stat_summary(fun.y = mean, geom = "line", position = position_dodge(0.2)) +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = 0.2, position = position_dodge(0.2)) +
+  scale_colour_manual(values = c("black", "#0072B2", "#E69F00")) +
   scale_x_continuous(breaks = c(3, 4, 5)) +
   scale_y_continuous(breaks = seq(from = 9, to = 15)) + 
   theme_bw() +
@@ -411,6 +440,17 @@ ENMO.graph <- ggplot(data = ENMO.graph.df, aes(x = speed, y = VO2.kg, colour = g
     axis.line = element_line(size = 0.5, colour = "Black"),
     axis.ticks = element_line(size = 0.5, colour = "Black"),
     axis.ticks.length = unit(2, "mm"),
-    plot.title = element_text(face = "bold")
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.position = "bottom"
   ) +
-  ggtitle("Figure 2")
+  labs(
+    title = "ENMO",
+    x = bquote("Speed" ~ (km^. ~ h^-1)),
+    y = bquote(VO[2] ~ "/ kg")
+  )
+
+ggsave(
+  filename = "figs/abstract_3_fig_2.pdf",
+  plot = ENMO.graph, width = 30, height = 20, units = "cm"
+)
